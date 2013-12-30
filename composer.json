@@ -1,0 +1,24 @@
+{
+	"name": "ideacouture/predictionio-plugin",
+	"description": "A WordPress plugin to connect to a PredictionIO server",
+	"version": "1.0.0",
+	"keywords": ["wordpress", "prediction.io"],
+	"type": "wordpress-plugin",
+	"require": {
+		"composer/installers": "v1.0.6",
+		"predictionio/predictionio": "~0.6.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "*",
+		"mockery/mockery": "dev-master",
+		"davedevelopment/hamcrest-php": "dev-master"
+	},
+	"config": {
+		"vendor-dir": "assets"
+	},
+	"autoload": {
+		"psr-0": {
+			"IdeaCouture": "src/"
+		}
+	}
+}

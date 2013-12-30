@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="assets/autoload.php"
+		colors="true"
+		convertErrorsToExceptions="true"
+		convertNoticesToExceptions="true"
+		convertWarningsToExceptions="true"
+		stopOnFailure="true">
+    <testsuites>
+        <testsuite name="Prediction.IO WordPress Plugin Test Suite">
+            <directory>Test/</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
