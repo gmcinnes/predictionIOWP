@@ -23,7 +23,7 @@
  * Load in composer's autoloader to load in the PredictionIO PHP SDK
  */
 
-require_once( $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
+require_once( str_replace('/wp', '/', $_SERVER['DOCUMENT_ROOT']) . '/vendor/autoload.php');
 use PredictionIO\PredictionIOClient;
 
 /**
