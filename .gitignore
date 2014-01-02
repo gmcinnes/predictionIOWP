@@ -23,5 +23,5 @@ nbproject
 *.sublime-workspace
 
 # Composer install directory
-assets
+vendor
 composer.lock
