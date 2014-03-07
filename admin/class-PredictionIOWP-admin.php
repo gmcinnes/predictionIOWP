@@ -98,8 +98,9 @@ class PredictionIOWP_Admin {
 					'appkey' => $options['app_key'],
 					'apiurl' => $options['api_url']
 					)),
-				'ItemRecommendations',
-				'ItemSimilarity');
+					$options['recommendation_engine'],
+					$options['similarity_engine']
+				);
 		}
 
 
@@ -282,7 +283,9 @@ class PredictionIOWP_Admin {
 	function piwp_default_connection_settings_options() {
 		$defaults = array(
 			'app_key' => '',
-			'api_url' => 'http://localhost:8000'
+			'api_url' => 'http://localhost:8000',
+			'recommendation_engine' => '',
+			'similarity_engine' => ''
 		);
 
 		return apply_filters( 'piwp_default_connection_settings_options', $defaults );
@@ -327,6 +330,22 @@ class PredictionIOWP_Admin {
 			'piwp_connection_settings_section'
 		);
 
+		add_settings_field(
+			'recommendation_engine',
+			__('Prediction.IO Recommendation Engine', $this->plugin_slug),
+			array($this, 'piwp_recommendation_callback'),
+			'piwp_connection_settings',
+			'piwp_connection_settings_section'
+		);
+
+		add_settings_field(
+			'similarity_engine',
+			__('Prediction.IO Similarity Engine', $this->plugin_slug),
+			array($this, 'piwp_similarity_callback'),
+			'piwp_connection_settings',
+			'piwp_connection_settings_section'
+		);
+
 		register_setting(
 			'piwp_connection_settings',
 			'piwp_connection_settings'
@@ -366,6 +385,30 @@ class PredictionIOWP_Admin {
 		$options = get_option( 'piwp_connection_settings' );
 
 		echo '<input type="text" id="app_key" name="piwp_connection_settings[api_url]" value="' . $options['api_url'] . '" />';
+	}
+
+	/**
+	 * The callback function for the Recommendation Engine setting
+	 * 
+	 * @since 1.0.0
+	 * 
+	 */
+	function piwp_recommendation_callback() {
+		$options = get_option( 'piwp_connection_settings' );
+
+		echo '<input type="text" id="recommendation_engine" name="piwp_connection_settings[recommendation_engine]" value="' . $options['recommendation_engine'] . '" />';
+	}
+
+	/**
+	 * The callback function for the Similarity Engine setting
+	 * 
+	 * @since 1.0.0
+	 * 
+	 */
+	function piwp_similarity_callback() {
+		$options = get_option( 'piwp_connection_settings' );
+
+		echo '<input type="text" id="similarity_engine" name="piwp_connection_settings[similarity_engine]" value="' . $options['similarity_engine'] . '" />';
 	}
 
 	/**
