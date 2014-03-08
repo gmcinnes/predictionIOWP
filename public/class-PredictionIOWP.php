@@ -92,8 +92,9 @@ class PredictionIOWP {
 		if(!empty($options['app_key']) && $this->predictionIOAPI === null) {
 			$this->predictionIOAPI = new PredictionIOAPI(
 				PredictionIOClient::factory(array('appkey' => $options['app_key'])),
-				'ItemRecommendations',
-				'ItemSimilarity');
+				$options['recommendation_engine'],
+				$options['similarity_engine']
+				);
 		}
 
 		// Load plugin text domain
@@ -107,9 +108,12 @@ class PredictionIOWP {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 
 		/*
-		 * Add custom action hooks for view events
+		 * Add custom action hooks Prediction IO
 		 */
-		add_action('register_view', array( $this, 'register_view_callback') );		
+		add_action( 'init' , array( $this , 'add_user' ));
+		add_action( 'save_post' , array( $this , 'add_item' ));
+		add_action( 'template_redirect' , array( $this , 'register_view_callback' ));		
+		add_action( 'wp_ajax_register_action' , array( $this , 'register_action' ));
 
 	}
 
@@ -216,6 +220,27 @@ class PredictionIOWP {
 
 	}
 
+
+	/**
+	 * Ensure that the current user's ID has been added to prediction io
+	 */
+	function add_user() {
+		// Check to see if this user's id has already been added
+
+		// Add the user to the prediction io server
+		$this->predictionIOAPI->addUser($user_id = -1);
+	}
+
+	/** 
+	 * Add an item to the Prediction IO server
+	 */
+	function add_item( $post_id ) {
+		$post = get_post($post_id);
+		if(self::is_valid_post($post->post_status, $post->post_type)) {
+			$this->predictionIOAPI->addItem($post_id, $post->post_type);
+		}
+	}
+
 	/**
 	 * A call back function that registers a view action
 	 *
@@ -229,8 +254,35 @@ class PredictionIOWP {
 	 * @since 1.0.0
 	 *
 	 */
-	function register_view_callback( $args ) {
-		$this->predictionIOAPI->registerView($user_id = $args[0], $item_id = $args[1]);
+	function register_view_callback() {
+		global $post;
+		if(is_singular()) {
+			self::register_action($user_id = -1, $post->ID);
+		}
+	}
+
+	/** 
+	 * A simple hook for ajax calls to register action
+	 */
+	function register_action_ajax() {
+		$sanitized_post = sanitize_array($_POST);
+
+		self::register_action($user_id = -1, $sanitized_post['item_id'], $sanitized_post['action']);
+	}
+
+	/**
+	 * Register a user action
+	 * @param $user_id The userid of the user in question
+	 * @param $item_id The id of the item
+	 * @param $action The action the user took
+	 */
+	function register_action($user_id, $item_id, $action = 'view') {
+		$this->predictionIOAPI->registerAction($user_id, $item_id, $action);
+	}
+
+	// Determine if this is a valid post that should be saved in Prediction.IO
+	private function is_valid_post($post_status, $post_type) {
+		return ($post_status === 'publish' && in_array($post_type, $this->predictionIOAPI->get_post_types()));
 	} 
 
 	/**

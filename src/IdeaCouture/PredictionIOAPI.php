@@ -10,7 +10,6 @@
  */
 
 namespace IdeaCouture;
-use \PredictionIO\PredictionIOClient;
 
 /**
  * A wrapper class that interacts with the WordPress plugin and the Prediction.IO
@@ -54,7 +53,7 @@ class PredictionIOAPI {
 	 * @param PredictionIO\PredictionIOClient $client A instance of the PredictionIOClient object used 
 	 *		to execute commands against a PredictionIO server
 	 */
-	public function __construct(PredictionIOClient $client, $recommendation_engine = null, $similarity_engine = null)
+	public function __construct(\PredictionIO\PredictionIOClient $client, $recommendation_engine = null, $similarity_engine = null)
 	{
 		if( ! $client ) 
 			throw InvalidArgumentException('Must supply a PredictionIOClient variable');
@@ -134,7 +133,7 @@ class PredictionIOAPI {
 		try {
 			$command = $this->client->getCommand( 'get_user', array( 'pio_uid' => $user_id) );
 			$reponse = $this->client->execute($command);
-		} catch (Exception $e) {
+		} catch (\Guzzle\Http\Exception\ClientErrorResponseException $e) {
 			if( $e->getResponse()->getStatusCode() === 404 ) {
 				$current_user = false;
 			}
@@ -185,7 +184,7 @@ class PredictionIOAPI {
 		try {
 			$command = $this->client->getCommand( 'get_item', array( 'pio_iid' => $item_id) );
 			$reponse = $this->client->execute($command);
-		} catch (Exception $e) {
+		} catch (\Guzzle\Http\Exception\ClientErrorResponseException $e) {
 			if( $e->getResponse()->getStatusCode() === 404 ) {
 				$current_item = false;
 			}
@@ -229,43 +228,19 @@ class PredictionIOAPI {
 	 *
 	 * @param int|string $user_id The user to associate with the view
 	 * @param int\string $item_id The user to associate with the view
+	 * @param string $action The action the user took (can be view, like or dislike)
 	 *
 	 * @since 1.0.0
 	 */
-	public function registerView($user_id, $item_id)
+	public function registerAction($user_id, $item_id, $action)
 	{
 		// Identify the current user in question
 		$this->client->identify($user_id);
 
 		// Create the command to register the page view
 		$command = $this->client->getCommand('record_action_on_item', array(
-			'pio_action' => 'view',
+			'pio_action' => $action,
 			'pio_iid' => $item_id
-		));
-
-		// Execute the command
-		$this->client->execute($command);
-	}
-
-	/**
-	 * A public function to register a rating
-	 *
-	 * @param int|string $user_id The user to associate with the rating
-	 * @param int|string $item_id The item to associate with the rating
-	 * @param int $rate The rate value for the particular association
-	 *
-	 * @since 1.0.0
-	 */
-	public function registerRate($user_id, $item_id, $rate)
-	{
-		// Identify the current user in question
-		$this->client->identify($user_id);
-
-		// Create the command to register the rank
-		$command = $this->client->getCommand('record_action_on_item', array(
-			'pio_action' => 'rate',
-			'pio_iid' => $item_id,
-			'pio_rate' => $rate
 		));
 
 		// Execute the command
@@ -302,7 +277,7 @@ class PredictionIOAPI {
 		try {
 			// Execute the command on the server
 			$recommended_items = $this->client->execute($command);		
-		} catch(Execption $e) {
+		} catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
 			echo 'Caught Exception: ', $e->getMessage(), "\n";
 		}
 		
@@ -339,12 +314,26 @@ class PredictionIOAPI {
 		try {
 			// Execute the command on the server
 			$similar_items = $this->client->execute($command);		
-		} catch(Execption $e) {
+		} catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
 			echo 'Caught Exception: ', $e->getMessage(), "\n";
 		}
 		
 		return $similar_items;
 	}
 
+	/**
+	 * Return a list of valid post types
+	 *
+	 * @return array The valid post types
+	 */
 
+	public function get_post_types() {
+		$post_types = get_post_types();
+		$unwanted_post_types = array('attachment', 'revision', 'nav_menu_item', 'tablepress_table');
+
+		// Remove the unwanted post types from the post types returned by WP
+		$valid_post_types = array_diff($post_types, $unwanted_post_types);
+
+		return $valid_post_types;
+	}
 }
