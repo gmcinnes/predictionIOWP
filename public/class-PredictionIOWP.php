@@ -110,10 +110,11 @@ class PredictionIOWP {
 		/*
 		 * Add custom action hooks Prediction IO
 		 */
-		add_action( 'init' , array( $this , 'add_user' ));
+		add_filter( 'the_content' , array( $this , 'register_user' ));
+		add_filter( 'the_content' , array( $this , 'register_view_callback' ));	
+
 		add_action( 'save_post' , array( $this , 'add_item' ));
-		add_action( 'template_redirect' , array( $this , 'register_view_callback' ));		
-		add_action( 'wp_ajax_register_action' , array( $this , 'register_action' ));
+		add_action( 'wp_ajax_register_action' , array( $this , 'register_action_ajax' ));
 
 	}
 
@@ -224,21 +225,10 @@ class PredictionIOWP {
 	/**
 	 * Ensure that the current user's ID has been added to prediction io
 	 */
-	function add_user() {
-		// Check to see if this user's id has already been added
+	function register_user($content) {
+		$img =  $this->build_action_image('register_user', array('user_id' => -1));
 
-		// Add the user to the prediction io server
-		$this->predictionIOAPI->addUser($user_id = -1);
-	}
-
-	/** 
-	 * Add an item to the Prediction IO server
-	 */
-	function add_item( $post_id ) {
-		$post = get_post($post_id);
-		if(self::is_valid_post($post->post_status, $post->post_type)) {
-			$this->predictionIOAPI->addItem($post_id, $post->post_type);
-		}
+		return $content . $img;
 	}
 
 	/**
@@ -254,10 +244,23 @@ class PredictionIOWP {
 	 * @since 1.0.0
 	 *
 	 */
-	function register_view_callback() {
+	function register_view_callback($content) {
 		global $post;
 		if(is_singular()) {
-			self::register_action($user_id = -1, $post->ID);
+			$img = $this->build_action_image('register_item_view', array('user_id' => -1, 'item_id' => $post->ID));
+			return $content . $img;
+		}
+
+		return $content;
+	}
+
+	/** 
+	 * Add an item to the Prediction IO server
+	 */
+	function add_item( $post_id ) {
+		$post = get_post($post_id);
+		if(self::is_valid_post($post->post_status, $post->post_type)) {
+			$this->predictionIOAPI->addItem($post_id, $post->post_type);
 		}
 	}
 
@@ -268,6 +271,17 @@ class PredictionIOWP {
 		$sanitized_post = sanitize_array($_POST);
 
 		self::register_action($user_id = -1, $sanitized_post['item_id'], $sanitized_post['action']);
+	}
+
+	/**
+	 * A builder for the fake image
+	 */
+	private function build_action_image($action, $params) {
+		// $url_string = plugins_url( 'includes/perform_actions.php', __FILE__ ) . "?action=$action&" . http_build_query($params);
+		$url_string = "http://marsddnext-local.icstage.com/app/plugins/predictionio-plugin/public/includes/perform_actions.php?action=$action&" . http_build_query($params);
+		$img_string = '<img src="%s" class="perform_action" />';
+		
+		return sprintf($img_string, $url_string);
 	}
 
 	/**

@@ -1,1 +1,6 @@
 /* This stylesheet is used to style the public-facing components of the plugin. */
+
+/* Hide the perform_action image */
+.perform_action {
+	display: hidden;
+}
