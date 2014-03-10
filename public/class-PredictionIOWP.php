@@ -24,6 +24,8 @@
  */
 
 require_once( str_replace('/wp', '/', $_SERVER['DOCUMENT_ROOT']) . '/vendor/autoload.php');
+
+
 use PredictionIO\PredictionIOClient;
 
 /**
@@ -86,7 +88,6 @@ class PredictionIOWP {
 	 * @since     1.0.0
 	 */
 	private function __construct() {
-
 		// Create the PredictionIOAPI object if the app_key has been set
 		$options = get_option('piwp_connection_settings');
 		if(!empty($options['app_key']) && $this->predictionIOAPI === null) {
@@ -96,6 +97,8 @@ class PredictionIOWP {
 				$options['similarity_engine']
 				);
 		}
+
+		$this->userid = -1;
 
 		// Load plugin text domain
 		add_action( 'init', array( $this, 'load_plugin_textdomain' ) );
@@ -226,7 +229,7 @@ class PredictionIOWP {
 	 * Ensure that the current user's ID has been added to prediction io
 	 */
 	function register_user($content) {
-		$img =  $this->build_action_image('register_user', array('user_id' => -1));
+		$img =  $this->build_action_image('register_user', array('user_id' => $this->userid));
 
 		return $content . $img;
 	}
@@ -247,7 +250,7 @@ class PredictionIOWP {
 	function register_view_callback($content) {
 		global $post;
 		if(is_singular()) {
-			$img = $this->build_action_image('register_item_view', array('user_id' => -1, 'item_id' => $post->ID));
+			$img = $this->build_action_image('register_item_view', array('user_id' => $this->userid, 'item_id' => $post->ID));
 			return $content . $img;
 		}
 
@@ -268,30 +271,26 @@ class PredictionIOWP {
 	 * A simple hook for ajax calls to register action
 	 */
 	function register_action_ajax() {
+
 		$sanitized_post = sanitize_array($_POST);
 
-		self::register_action($user_id = -1, $sanitized_post['item_id'], $sanitized_post['action']);
+		$user_id = !empty($sanitized_post['user_id']) ? $sanitized_post['user_id'] : $this->user_id;
+
+		$response = $this->predictionIOAPI->registerAction($user_id, $sanitized_post['item_id'], $sanitized_post['predictionAction']);
+
+		wp_send_json(array(
+			'response' => $response
+		));
 	}
 
 	/**
 	 * A builder for the fake image
 	 */
 	private function build_action_image($action, $params) {
-		// $url_string = plugins_url( 'includes/perform_actions.php', __FILE__ ) . "?action=$action&" . http_build_query($params);
-		$url_string = "http://marsddnext-local.icstage.com/app/plugins/predictionio-plugin/public/includes/perform_actions.php?action=$action&" . http_build_query($params);
+		$url_string = plugins_url( 'includes/perform_actions.php', __FILE__ ) . "?action=$action&" . http_build_query($params);
 		$img_string = '<img src="%s" class="perform_action" />';
 		
 		return sprintf($img_string, $url_string);
-	}
-
-	/**
-	 * Register a user action
-	 * @param $user_id The userid of the user in question
-	 * @param $item_id The id of the item
-	 * @param $action The action the user took
-	 */
-	function register_action($user_id, $item_id, $action = 'view') {
-		$this->predictionIOAPI->registerAction($user_id, $item_id, $action);
 	}
 
 	// Determine if this is a valid post that should be saved in Prediction.IO

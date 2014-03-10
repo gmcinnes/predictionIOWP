@@ -24,27 +24,29 @@ if(isset($_GET['action'])) {
 	);
 
 	// Cool! We know have a Mars predictionIOAPI object that we can perform actions against
-
+	// Get the user id
+	// TODO: This should come from the MarsAccount
+	$user_id = !empty($sanitized_get['user_id']) ? $sanitized_get['user_id'] : mars::user_id;
 
 	switch($_GET['action']) {
 		case 'register_user':
-			$user_id = !empty($sanitized_get['user_id']) ? $sanitized_get['user_id'] : -1;
 			$response = $predictionIOAPI->addUser($user_id);
 			break;
 
 		case 'register_item_view':
-			$user_id = !empty($sanitized_get['user_id']) ? $sanitized_get['user_id'] : -1;
-			$item_id = !empty($sanitized_get['item_id']) ? $sanitized_get['item_id'] : -1;
-			$response = $predictionIOAPI->registerAction($user_id, $item_id, 'view');
+			// Only register the action if the item_id is set
+			if(!empty($sanitized_get['item_id'])) {
+				$response = $predictionIOAPI->registerAction($user_id, $sanitized_get['item_id'], 'view');
+			}
 			break;
 	}
 
-	// send_image();
+	send_image();
 
 }
 
 function send_image() {
-	$transparent_image = '../assets/red.gif';
+	$transparent_image = '../assets/spacer.gif';
 	header('Content-Type: image/gif');
 	
 	if(file_exists($transparent_image)) {
