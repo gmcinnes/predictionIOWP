@@ -25,7 +25,7 @@
  */
 
 require_once( $_SERVER['DOCUMENT_ROOT'] . '/vendor/autoload.php');
-use PredictionIO\PredictionIOClient;
+use \PredictionIO\PredictionIOClient;
 
 /**
  *	Load in the custom Prediction.IO API Class
@@ -94,7 +94,7 @@ class PredictionIOWP_Admin {
 		$options = get_option('piwp_connection_settings');
 		if(!empty($options['app_key']) && $this->predictionIOAPI === null) {
 			$this->predictionIOAPI = new PredictionIOAPI(
-				PredictionIOClient::factory(array(
+				PredictionIO\PredictionIOClient::factory(array(
 					'appkey' => $options['app_key'],
 					'apiurl' => $options['api_url']
 					)),
@@ -204,7 +204,7 @@ class PredictionIOWP_Admin {
 
 		$screen = get_current_screen();
 		if ( $this->plugin_screen_hook_suffix == $screen->id ) {
-			wp_enqueue_script( $this->plugin_slug . '-admin-script', plugins_url( 'assets/js/admin.js', __FILE__ ), array( 'jquery' ), PredictionIOWP::VERSION );
+			wp_enqueue_script( $this->plugin_slug . '-admin-script', plugins_url( 'predictionio-plugin/admin/assets/js/admin.js'), array( 'jquery' ), PredictionIOWP::VERSION );
 		}
 
 	}
@@ -495,8 +495,11 @@ class PredictionIOWP_Admin {
 	 * @since 1.0.0
 	 *
 	 */
-	public function piwp_populate_posts($item_ids = null) {
+	public function piwp_populate_posts() {
 		global $wpdb;
+
+		$allowed_post_types = $this->predictionIOAPI->get_post_types();
+		$allowed_post_types = '"' . implode('","', $allowed_post_types) . '"';
 		
 		// Ensure that the Prediction.IO Client has been initalized
 		if($this->predictionIOAPI === null) {
@@ -505,31 +508,25 @@ class PredictionIOWP_Admin {
 		}
 
 		// Check if there are a list of item_ids to add or to default to all posts
-		if($item_ids !== null) {
-			// Get all the posts
-			$query_string = "
-				SELECT $wpdb->posts.id 
-			 	FROM $wpdb->posts 
-			 	WHERE $wpdb->posts.post_status = 'publish' 
-			 	AND $wpdb->posts.post_type = 'post' 
-			 	ORDER BY $wpdb->posts.post_date DESC
-			";
+		// Get all the posts
+		$query_string = "
+			SELECT $wpdb->posts.id, $wpdb->posts.post_type
+		 	FROM $wpdb->posts 
+		 	WHERE $wpdb->posts.post_status = 'publish' 
+		 	AND $wpdb->posts.post_type IN ($allowed_post_types) 
+		 	ORDER BY $wpdb->posts.post_date DESC
+		";
 
-			$item_ids = $wpdb->get_results($query_string);
-		}
+
+		$items = $wpdb->get_results($query_string);
 
 		// Add the posts to the Prediction.IO Server
-		foreach($item_ids as $item) {
-			// Check if this is an object or array string
-			if(is_object($item)) {
-				$item = $item->id;
-			}
-
-			$this->predictionIOAPI->addItem($item, 'post');
+		foreach($items as $item) {
+			$this->predictionIOAPI->addItem($item->id, $item->post_type);
 		}
 
 		$return = array(
-			'message' => 'The posts have been populated'
+			'message' => count($items) . " posts have been populated"
 		);
 
 		wp_send_json($return);

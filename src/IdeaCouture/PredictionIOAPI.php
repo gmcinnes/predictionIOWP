@@ -10,7 +10,6 @@
  */
 
 namespace IdeaCouture;
-use \PredictionIO\PredictionIOClient;
 
 /**
  * A wrapper class that interacts with the WordPress plugin and the Prediction.IO
@@ -54,7 +53,7 @@ class PredictionIOAPI {
 	 * @param PredictionIO\PredictionIOClient $client A instance of the PredictionIOClient object used 
 	 *		to execute commands against a PredictionIO server
 	 */
-	public function __construct(PredictionIOClient $client, $recommendation_engine = null, $similarity_engine = null)
+	public function __construct(\PredictionIO\PredictionIOClient $client, $recommendation_engine = null, $similarity_engine = null)
 	{
 		if( ! $client ) 
 			throw InvalidArgumentException('Must supply a PredictionIOClient variable');
@@ -129,18 +128,11 @@ class PredictionIOAPI {
 	 */
 	private function checkUser($user_id)
 	{
-		$current_user = true;
+		$command = $this->client->getCommand( 'get_user', array( 'pio_uid' => $user_id) );
+		$response = $this->handle_action($command);
 
-		try {
-			$command = $this->client->getCommand( 'get_user', array( 'pio_uid' => $user_id) );
-			$reponse = $this->client->execute($command);
-		} catch (Exception $e) {
-			if( $e->getResponse()->getStatusCode() === 404 ) {
-				$current_user = false;
-			}
-		}
-
-		return $current_user;
+		// The repsonse will return false if there was a problem
+		return $response;
 	}
 
 	/**
@@ -157,11 +149,17 @@ class PredictionIOAPI {
 	public function addUser($user_id, $overwrite = false)
 	{
 		// Ensure that a new user will be added or updated if $overwrite is true
-		if( !$this->checkUser($user_id) || $overwrite ) {
-			$command = $this->client->getCommand('create_user', array('pio_uid' => $user_id));
-			$response = $this->client->execute($command);
-		}
+		$checked_user_exists = $this->checkUser($user_id);
 
+		if( !$checked_user_exists || $overwrite ) {
+			$command = $this->client->getCommand('create_user', array('pio_uid' => $user_id));
+			$response = $this->handle_action($command);
+			return $response;
+		} elseif($checked_user_exists) {
+			return true;
+		} else {
+			return false;
+		}
 	}
 
 
@@ -176,22 +174,14 @@ class PredictionIOAPI {
 	 *
 	 * @throws Exception if the REST server is unable to return a item
 	 *
-	 * @return boolean $current_item A boolean which indicates if the item has been found or not
+	 * @return array|boolean $response A boolean or array which indicates if the item has been found or not
 	 */
 	private function checkItem($item_id)
 	{
-		$current_item = true;
+		$command = $this->client->getCommand( 'get_item', array( 'pio_iid' => $item_id) );
+		$response = $this->handle_action($command);
 
-		try {
-			$command = $this->client->getCommand( 'get_item', array( 'pio_iid' => $item_id) );
-			$reponse = $this->client->execute($command);
-		} catch (Exception $e) {
-			if( $e->getResponse()->getStatusCode() === 404 ) {
-				$current_item = false;
-			}
-		}
-
-		return $current_item;
+		return $response;
 	}
 
 	/**
@@ -209,8 +199,10 @@ class PredictionIOAPI {
 	public function addItem($item_id, $item_type = 'post', $overwrite = false)
 	{
 
+		$checked_item_exists = $this->checkItem($item_id);
+
 		// Ensure that a new item will be added or updated if $overwrite is true
-		if( !$this->checkItem($item_id) || $overwrite ){
+		if( !$checked_item_exists || $overwrite ){
 			// Setup the command to execute the add Item
 			$command = $this->client->getCommand('create_item', 
 				array(
@@ -218,7 +210,12 @@ class PredictionIOAPI {
 					'pio_itypes' => $item_type
 				)
 			);
-			$reponse = $this->client->execute($command);
+			$response = $this->handle_action($command);
+			return $response;
+		} elseif($checked_item_exists) {
+			return true;
+		} else {
+			return false;
 		}
 	}
 
@@ -229,47 +226,25 @@ class PredictionIOAPI {
 	 *
 	 * @param int|string $user_id The user to associate with the view
 	 * @param int\string $item_id The user to associate with the view
+	 * @param string $action The action the user took (can be view, like or dislike)
 	 *
 	 * @since 1.0.0
 	 */
-	public function registerView($user_id, $item_id)
+	public function registerAction($user_id, $item_id, $action)
 	{
 		// Identify the current user in question
 		$this->client->identify($user_id);
 
 		// Create the command to register the page view
 		$command = $this->client->getCommand('record_action_on_item', array(
-			'pio_action' => 'view',
+			'pio_action' => $action,
 			'pio_iid' => $item_id
 		));
 
 		// Execute the command
-		$this->client->execute($command);
-	}
+		$response = $this->handle_action($command);
 
-	/**
-	 * A public function to register a rating
-	 *
-	 * @param int|string $user_id The user to associate with the rating
-	 * @param int|string $item_id The item to associate with the rating
-	 * @param int $rate The rate value for the particular association
-	 *
-	 * @since 1.0.0
-	 */
-	public function registerRate($user_id, $item_id, $rate)
-	{
-		// Identify the current user in question
-		$this->client->identify($user_id);
-
-		// Create the command to register the rank
-		$command = $this->client->getCommand('record_action_on_item', array(
-			'pio_action' => 'rate',
-			'pio_iid' => $item_id,
-			'pio_rate' => $rate
-		));
-
-		// Execute the command
-		$this->client->execute($command);
+		return $response;
 	}
 
 	/**
@@ -280,7 +255,7 @@ class PredictionIOAPI {
 	 * @param int $number_of_items The number of items to return
 	 * @param string $recommendation_engine_name The name of the recommendation engine
 	 *
-	 * @return array $recommended_items The recommended items returned by the Prediction.IO Server
+	 * @return array $response The recommended items returned by the Prediction.IO Server
 	 *
 	 * @throws Exception $e The exception that gets returned if the command failed
 	 *
@@ -299,14 +274,9 @@ class PredictionIOAPI {
 			'pio_n' => $number_of_items
 		));
 
-		try {
-			// Execute the command on the server
-			$recommended_items = $this->client->execute($command);		
-		} catch(Execption $e) {
-			echo 'Caught Exception: ', $e->getMessage(), "\n";
-		}
-		
-		return $recommended_items;
+		$response = $this->handle_action($command);
+
+		return $response;
 	}
 
 	/**
@@ -317,7 +287,7 @@ class PredictionIOAPI {
 	 * @param int $number_of_items The number of items to return
 	 * @param string $similarty_engine_name The name of the similarity engine
 	 *
-	 * @return array $similar_items The similar items returned by the Prediction.IO Server
+	 * @return array $response The similar items returned by the Prediction.IO Server
 	 *
 	 * @throws Exception $e The exception that gets returned if the command failed
 	 *
@@ -336,15 +306,38 @@ class PredictionIOAPI {
 			'pio_n' => $number_of_items
 		));
 
-		try {
-			// Execute the command on the server
-			$similar_items = $this->client->execute($command);		
-		} catch(Execption $e) {
-			echo 'Caught Exception: ', $e->getMessage(), "\n";
-		}
-		
-		return $similar_items;
+		$response = $this->handle_action($command);
+
+		return $response;
 	}
 
+	/**
+	 * Return a list of valid post types
+	 *
+	 * @return array The valid post types
+	 */
 
+	public function get_post_types() {
+		$post_types = get_post_types();
+		$unwanted_post_types = array('attachment', 'revision', 'nav_menu_item', 'tablepress_table');
+
+		// Remove the unwanted post types from the post types returned by WP
+		$valid_post_types = array_diff($post_types, $unwanted_post_types);
+
+		return $valid_post_types;
+	}
+
+	private function handle_action( $command ) {
+		try {
+			$response = $this->client->execute($command);
+			return $response;
+
+		} catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
+			if( $e->getResponse()->getStatusCode() === 404 ) {
+				return false;
+			}
+		} catch(\Guzzle\Http\Exception\CurlException $e) {
+			return false;
+		}
+	}
 }
