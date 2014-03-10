@@ -220,6 +220,18 @@ class PredictionIOAPI {
 	}
 
 	/**
+	 * A public function that deletes an item on the Prediction.io Server
+	 *
+	 * @param int $item_id The item to delete
+	 */
+	public function delete_item($item_id) {
+		$command = $this->client->getCommand('delete_item', array('pio_iid' => $item_id));
+		$response = $this->handle_action($command);
+
+		return $response;
+	}
+
+	/**
 	 * A public function to record a view
 	 *
 	 * Register a view with a given user and item

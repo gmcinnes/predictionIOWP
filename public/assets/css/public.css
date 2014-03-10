@@ -2,5 +2,5 @@
 
 /* Hide the perform_action image */
 .perform_action {
-	display: hidden;
+	display: none;
 }
