@@ -117,6 +117,7 @@ class PredictionIOWP {
 		add_filter( 'the_content' , array( $this , 'register_view_callback' ));	
 
 		add_action( 'save_post' , array( $this , 'add_item' ));
+		add_action( 'delete_post' , array( $this, 'delete_item' ));
 		add_action( 'wp_ajax_register_action' , array( $this , 'register_action_ajax' ));
 
 	}
@@ -268,6 +269,16 @@ class PredictionIOWP {
 	}
 
 	/** 
+	 * Delete an item on the Prediction IO server
+	 */
+	function delete_item( $post_id ) {
+		$post = get_post($post_id);
+		if(self::is_valid_post_type($post->post_type)) {
+			$response = $this->predictionIOAPI->delete_item($post_id, $post->post_type);
+		}
+	}
+
+	/** 
 	 * A simple hook for ajax calls to register action
 	 */
 	function register_action_ajax() {
@@ -295,8 +306,13 @@ class PredictionIOWP {
 
 	// Determine if this is a valid post that should be saved in Prediction.IO
 	private function is_valid_post($post_status, $post_type) {
-		return ($post_status === 'publish' && in_array($post_type, $this->predictionIOAPI->get_post_types()));
+		return ( $post_status === 'publish' && $this->is_valid_post_type($post_type) );
 	} 
+
+	// Determine if this post is a valid custom post type
+	private function is_valid_post_type($post_type) {
+		return in_array($post_type, $this->predictionIOAPI->get_post_types());
+	}
 
 	/**
 	 * Fired when a new site is activated with a WPMU environment.
