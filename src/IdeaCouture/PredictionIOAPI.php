@@ -242,7 +242,7 @@ class PredictionIOAPI {
 	 *
 	 * @since 1.0.0
 	 */
-	public function registerAction($user_id, $item_id, $action)
+	public function registerAction($user_id, $item_id, $action = 'view')
 	{
 		// Identify the current user in question
 		$this->client->identify($user_id);
@@ -274,7 +274,7 @@ class PredictionIOAPI {
 	 * @since 1.0.0
 	 *
 	 */
-	public function getRecommendations($user_id, $item_type, $number_of_items, $recommendation_engine_name = null)
+	public function get_recommendations($user_id, $item_type, $number_of_items = 5, $recommendation_engine_name = null)
 	{
 		// Identify the current user in question
 		$this->client->identify($user_id);
@@ -306,7 +306,7 @@ class PredictionIOAPI {
 	 * @since 1.0.0
 	 *
 	 */
-	public function getSimilarities($user_id, $item_type, $number_of_items, $similarity_engine_name)
+	public function getSimilarities($user_id, $item_type, $number_of_items = 5, $similarity_engine_name = null)
 	{
 		// Identify the current user in question
 		$this->client->identify($user_id);
@@ -345,6 +345,7 @@ class PredictionIOAPI {
 			return $response;
 
 		} catch(\Guzzle\Http\Exception\ClientErrorResponseException $e) {
+
 			if( $e->getResponse()->getStatusCode() === 404 ) {
 				return false;
 			}

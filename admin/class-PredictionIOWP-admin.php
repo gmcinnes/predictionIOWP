@@ -461,8 +461,13 @@ class PredictionIOWP_Admin {
 			die();
 		}
 
-		$this->predictionIOAPI->adduser('2');
-		$this->predictionIOAPI->adduser('2', true);
+		$this->predictionIOAPI->adduser('-1');
+
+	
+		$this->piwp_record_item_view(-1, 133540);
+		$this->piwp_record_item_view(-1, 133539);
+		$this->piwp_record_item_view(-1, 133538);
+		
 		
 		die();
 	}
@@ -571,7 +576,6 @@ class PredictionIOWP_Admin {
 		}
 
 		// Set the identity of the user to mark the item view
-		$this->predictionIOAPI->registerView($user_id, $item_id);
-		die();
+		return $this->predictionIOAPI->registerAction($user_id, $item_id);
 	}
 }

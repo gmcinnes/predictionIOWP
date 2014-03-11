@@ -120,6 +120,10 @@ class PredictionIOWP {
 		add_action( 'delete_post' , array( $this, 'delete_item' ));
 		add_action( 'wp_ajax_register_action' , array( $this , 'register_action_ajax' ));
 
+		/*
+		 * Add the hooks for content recommendation
+		 */
+		add_action( 'the_post', array($this, 'get_item_recommendations'));
 	}
 
 	/**
@@ -313,6 +317,40 @@ class PredictionIOWP {
 	private function is_valid_post_type($post_type) {
 		return in_array($post_type, $this->predictionIOAPI->get_post_types());
 	}
+
+	/**
+	 * A callback that retrieves recommendations for a single post, for the current user from 
+	 * prediction.io
+	 */
+	public function get_item_recommendations( $post ) {
+		global $wpdb;
+
+		// Check to make sure we attach recommendations when appropriate
+		if(is_singular() && !is_admin()){
+			
+			$results = $this->predictionIOAPI->get_recommendations(mars::anonymous_user_id, $post->post_type);
+
+			// If we get results
+			if($results) {
+				$recommended_posts = array();
+				$rec_post_query = "SELECT id, post_title FROM $wpdb->posts WHERE ID IN (" . implode(', ', $results) . ")";
+				$rec_post_results = $wpdb->get_results($rec_post_query);
+
+				foreach($rec_post_results as $result) {
+					$recommended_posts[] = array(
+						'id' => $result->id,
+						'title' => $result->post_title,
+						'url' => get_permalink($result->id)
+					);
+				}
+				
+				$results = $recommended_posts;
+			}
+
+			$post->recommendations = $results;
+		}
+	}
+
 
 	/**
 	 * Fired when a new site is activated with a WPMU environment.
