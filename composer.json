@@ -5,7 +5,7 @@
 	"keywords": ["wordpress", "prediction.io"],
 	"type": "wordpress-plugin",
 	"require": {
-		"composer/installers": "v1.0.6",
+		"composer/installers": ">=v1.0.6",
 		"predictionio/predictionio": "~0.6.0"
 	},
 	"require-dev": {
